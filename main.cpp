@@ -128,9 +128,11 @@ TEST(shared_ptr_testing, reset_nullptr)
 TEST(shared_ptr_testing, reset_ptr)
 {
     test_object::no_new_instances_guard g;
-    shared_ptr<test_object> q(new test_object(42));
+    test_object* tmp = new test_object(42);
+    shared_ptr<test_object> q(tmp);
     EXPECT_TRUE(static_cast<bool>(q));
-    q.reset(new test_object(43));
+    test_object* tmp2 = new test_object(43);
+    q.reset(tmp2);
     EXPECT_EQ(43, *q);
 }
 
@@ -287,6 +289,7 @@ TEST(shared_ptr_testing, weak_ptr_lock)
     EXPECT_TRUE(r == p);
     EXPECT_EQ(42, *r);
 }
+
 
 TEST(shared_ptr_testing, weak_ptr_lock_nullptr)
 {

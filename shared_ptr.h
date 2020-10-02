@@ -79,19 +79,32 @@ public:
     }
 };
 
-template<typename T>
+template<typename A>
 struct shared_ptr;
+
+template<typename B>
+struct weak_ptr;
 
 template<typename T>
 struct weak_ptr {
+private:
     control_block *cb{};
     T *ptr{};
+    template<typename A>
+    friend
+    struct shared_ptr;
+    template<typename B>
+    friend
+    struct weak_ptr;
+
+public:
+
     void swap(weak_ptr &other) noexcept {
         std::swap(this->cb, other.cb);
         std::swap(this->ptr, other.ptr);
     };
 
-    weak_ptr() : ptr(nullptr), cb(nullptr) {};
+    weak_ptr() = default;
 
     ~weak_ptr() {
         if (cb != nullptr) {
@@ -104,9 +117,7 @@ struct weak_ptr {
 
 
     template<typename Y>
-    weak_ptr(shared_ptr<Y> const &r) {
-        this->ptr = r.ptr;
-        this->cb = r.cb;
+    weak_ptr(shared_ptr<Y> const &r) : ptr(r.ptr), cb(r.cb) {
         if (cb != nullptr) {
             cb->add_weak();
         }
@@ -123,15 +134,12 @@ struct weak_ptr {
 
 
     weak_ptr(weak_ptr &&other) {
-        this->ptr = other.ptr;
-        this->cb = other.cb;
-        other.ptr = nullptr;
-        other.cb = nullptr;
+        std::swap(this->ptr, other.ptr);
+        std::swap(this->cb, other.cb); // А почему блин это работает???
+
     };
 
-    weak_ptr(weak_ptr const &r) {
-        this->ptr = r.ptr;
-        this->cb = r.cb;
+    weak_ptr(weak_ptr const &r) : ptr(r.ptr), cb(r.cb) {
         if (cb != nullptr) {
             cb->add_weak();
         }
@@ -146,15 +154,21 @@ struct weak_ptr {
         weak_ptr(std::move(other)).swap(*this);
         return *this;
     };
-
-
 };
 
 template<typename T>
 struct shared_ptr {
+private:
     control_block *cb{};
     T *ptr{};
+    template<typename A>
+    friend
+    struct weak_ptr;
+    template<typename B>
+    friend
+    struct shared_ptr;
 
+public:
     shared_ptr() noexcept: ptr(nullptr), cb(nullptr) {};
 
     ~shared_ptr() {
@@ -220,42 +234,33 @@ struct shared_ptr {
         } else {
             return 0;
         }
-
     }
 
     template<typename D>
     shared_ptr(std::nullptr_t, D deleter) noexcept {};
 
     template<typename Y>
-    shared_ptr(shared_ptr<Y> const &sp, T *ptr) noexcept {
-        cb = sp.cb;
-        ptr = ptr;
+    shared_ptr(shared_ptr<Y> const &sp, T *ptr) noexcept : cb(sp.cb), ptr(ptr)  {
         if (cb != nullptr) {
             cb->add_ref();
         }
     };
 
     template<typename Y>
-    shared_ptr(const shared_ptr<Y> &r) noexcept {
-        this->ptr = r.ptr;
-        this->cb = r.cb;
+    shared_ptr(const shared_ptr<Y> &r) noexcept : ptr(r.ptr), cb(r.cb) {
         if (cb != nullptr) {
             cb->add_ref();
         }
     }
 
-    shared_ptr(const shared_ptr &r) noexcept {
-        this->ptr = r.ptr;
-        this->cb = r.cb;
+    shared_ptr(const shared_ptr &r) noexcept: ptr(r.ptr), cb(r.cb) {
         if (cb != nullptr) {
             cb->add_ref();
         }
     }
 
     template<typename Y>
-    shared_ptr(const weak_ptr<Y> &r) noexcept {
-        this->ptr = r.ptr;
-        this->cb = r.cb;
+    shared_ptr(const weak_ptr<Y> &r) noexcept : ptr(r.ptr), cb(r.cb) {
         if (cb != nullptr) {
             cb->add_ref();
         }
@@ -263,16 +268,12 @@ struct shared_ptr {
 
 
     template<typename Y>
-    shared_ptr(shared_ptr<Y> &&r) noexcept {
-        this->ptr = r.ptr;
-        this->cb = r.cb;
+    shared_ptr(shared_ptr<Y> &&r) noexcept : ptr(r.ptr), cb(r.cb) {
         r.ptr = nullptr;
         r.cb = nullptr;
     }
 
-    shared_ptr(shared_ptr &&r) noexcept {
-        this->ptr = r.ptr;
-        this->cb = r.cb;
+    shared_ptr(shared_ptr &&r) noexcept: ptr(r.ptr), cb(r.cb) {
         r.ptr = nullptr;
         r.cb = nullptr;
     }
